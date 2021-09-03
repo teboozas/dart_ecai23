@@ -90,7 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Survival analysis configuration')
     parser.add_argument('--seed', type=int, default=1234)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--dataset', type=str, default='kkbox_v2')
+    parser.add_argument('--dataset', type=str, default='metabric')
     parser.add_argument('--loss', type=str, default='rank')
     parser.add_argument('--optimizer', type=str, default='AdamWR')
     parser.add_argument('--an', type=float, default=1.0)
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--use_BN', action='store_true')
     parser.add_argument('--use_output_bias', action='store_true')
+    parser.add_argument('--wandb', action='store_true')
     
     args = parser.parse_args()
 
@@ -127,24 +128,26 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
 
 
+    data_file_name = os.path.join('./data/',args.dataset+'.pickle')
+    if os.path.exists(data_file_name):
+        with open(data_file_name, 'rb') as f:
+            data_split = pickle.load(f)
+    df_train = pd.concat([data_split['0']['train'],data_split['0']['valid'],data_split['0']['test'] ]) 
+
    # Data preparation ==============================================================
     if args.dataset=='metabric':
-        df_train = metabric.read_df()
         cols_standardize = ['x0', 'x1', 'x2', 'x3', 'x8']
         cols_leave = ['x4', 'x5', 'x6', 'x7']
         cols_categorical = []
     elif args.dataset=='gbsg':
-        df_train = gbsg.read_df()
         cols_standardize = ["x3", "x4", "x5", "x6"]
         cols_leave = ["x0", "x2"]
         cols_categorical = ["x1"]
     elif args.dataset=='support':
-        df_train = support.read_df()
         cols_standardize =  ["x0", "x3", "x7", "x8", "x9", "x10", "x11", "x12", "x13"]
         cols_leave = ["x1", "x4", "x5"]
         cols_categorical =  ["x2","x3", "x6"]
     elif args.dataset=='flchain':
-        df_train = flchain.read_df()
         df_train.columns =  ["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "duration", "event"]
         cols_standardize =  ["x0", "x3", "x4", "x6"]
         cols_leave = ["x1", "x7"]
@@ -167,48 +170,17 @@ if __name__ == "__main__":
         leave = [(col, None) for col in cols_leave]
         x_mapper = DataFrameMapper(standardize + leave)
 
-    data_file_name = os.path.join('./data/',args.dataset+'.pickle')
-    if os.path.exists(data_file_name):
-        with open(data_file_name, 'rb') as f:
-            data_split = pickle.load(f)
-    else:
-        data_fold = {}
-        size = len(df_train)
-        perm = list(range(size))
-        random.shuffle(perm)
-        for i in range(4):
-            data_fold[str(i)] = df_train.loc[perm[i*int(size*0.2):(i+1)*int(size*0.2)]]
-        data_fold['4'] = df_train.loc[perm[(i+1)*int(size*0.2):]]
-
-        data_split = {}
-        for i in range(4):
-            data_split[str(i)] = {}
-            data_split[str(i)]['test'] = data_fold[str(i)].copy()
-            data_split[str(i)]['valid'] = data_fold[str(i+1)].copy()
-            data_split[str(i)]['train'] = df_train.copy().drop(data_split[str(i)]['test'].index).drop(data_split[str(i)]['valid'].index)
-
-        data_split['4'] = {}
-        data_split['4']['test'] = data_fold[str(i+1)].copy()
-        data_split['4']['valid'] = data_fold['0'].copy()
-        data_split['4']['train'] = df_train.copy().drop(data_split['4']['test'].index).drop(data_split['4']['valid'].index)
-        
-        with open(data_file_name, 'wb') as f:
-            pickle.dump(data_split, f, pickle.HIGHEST_PROTOCOL)
-
     # Hyperparameter setup =========================================================
     list_num_layers=[1, 2, 4]
     list_num_nodes=[64, 128, 256, 512]
     list_batch_size=[64, 128, 256, 512, 1024]
     list_lr=[1e-1, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
-    list_weight_decay=[0.4, 0.2, 0.1, 0.05, 0.02, 0.01, 0]
+    list_weight_decay=[0.4, 0.2, 0.1, 0.05, 0.02, 0.01, 0.001]
     list_dropout=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     list_an=[1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 5e-1, 1.0]
     list_alpha=[0.0, 1e-4, 1e-5, 1e-6, 1e-7]
 
     # Training =====================================================================
-    FINAL_CTD = []
-    FINAL_IBS = []
-    FINAL_NBLL = []
     for fold in range(args.start_fold,args.end_fold):
         fold_ctd = []
         fold_ibs = []
@@ -229,7 +201,7 @@ if __name__ == "__main__":
             args.alpha=random.choice(list_alpha)
             args.beta =args.alpha
             
-            print(f'[{fold} fold][{i+1}/300]')
+            print(f'[{fold} fold][{i+1}/100]')
             # print(args)
 
             if len(cols_categorical)>0:
@@ -291,13 +263,6 @@ if __name__ == "__main__":
                 model = CoxPH(net, optimizer=tt.optim.Adam(lr=args.lr, weight_decay=args.weight_decay),device=device)
     
 
-            wandb.init(project='icml_new_'+args.dataset, 
-                    group=f'fold{fold}_'+args.loss+args.optimizer,
-                    name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
-                    config=args)
-
-            wandb.watch(net)
-
             # Loss configuration ============================================================
 
             patience=5
@@ -313,6 +278,16 @@ if __name__ == "__main__":
                 model.loss = DSAFTNKSPLLossNew(args.an, args.sigma)
 
             # Training ======================================================================
+            if args.wandb:
+                model.loss.wandb = True
+                wandb.init(project='ICLR'+args.dataset, 
+                        group=f'DSAFT_fold{fold}_'+args.loss,#+args.optimizer,
+                        name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
+                        config=args)
+
+                wandb.watch(net)
+            else:
+                model.loss.wandb = False
             batch_size = args.batch_size
             lrfinder = model.lr_finder(x_train, y_train, batch_size, tolerance=10)
             best = lrfinder.get_best_lr()
@@ -351,28 +326,9 @@ if __name__ == "__main__":
             ibs = sum(bs * ds) / (time_grid.max() - time_grid.min())
             ibll = sum(nbll * ds) / (time_grid.max() - time_grid.min())
             
-            
-            wandb.log({'val_loss':val_loss,
-                        'ctd':ctd,
-                        'ibs':ibs,
-                        'nbll':ibll})
-            wandb.finish()
-            fold_ctd.append(ctd)
-            fold_ibs.append(ibs)
-            fold_nbll.append(nbll)
-            fold_val_loss.append(val_loss)
-        
-        best_idx = np.array(val_loss).argmin()
-        best_ctd = fold_ctd[best_idx]
-        best_ibs = fold_ibs[best_idx]
-        best_nbll = fold_nbll[best_idx]
-        print(f'best_ctd:{best_ctd}/best_ibs:{best_ibs}/best_nbll:{best_nbll}')
-        FINAL_CTD.append(best_ctd)
-        FINAL_IBS.append(best_ibs)
-        FINAL_NBLL.append(best_nbll)
-    print('FINAL_CTD:',FINAL_CTD)
-    print('FINAL_IBS:',FINAL_IBS)
-    print('FINAL_NBLL:',FINAL_NBLL)
-    print('AVG_CTD:',sum(FINAL_CTD)/5)
-    print('AVG_IBS:',sum(FINAL_IBS)/5)
-    print('AVG_NBLL:',sum(FINAL_NBLL)/5)
+            if args.wandb:
+                wandb.log({'val_loss':val_loss,
+                            'ctd':ctd,
+                            'ibs':ibs,
+                            'nbll':ibll})
+                wandb.finish()

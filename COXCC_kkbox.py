@@ -23,6 +23,7 @@ import warnings
 import math
 from pycox.preprocessing.feature_transforms import OrderedCategoricalLong
 from model import MixedInputMLP
+import pickle
 
 from pycox.models import CoxCC
 
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Survival analysis configuration')
     parser.add_argument('--seed', type=int, default=1234)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--dataset', type=str, default='kkbox')
+    parser.add_argument('--dataset', type=str, default='kkbox_v1')
     parser.add_argument('--loss', type=str, default='rank')
     parser.add_argument('--optimizer', type=str, default='AdamWR')
     parser.add_argument('--an', type=float, default=1.0)
@@ -47,6 +48,8 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--use_BN', action='store_true')
     parser.add_argument('--use_output_bias', action='store_true')
+
+    parser.add_argument('--wandb', action='store_true')
     
     args = parser.parse_args()
 
@@ -61,68 +64,73 @@ if __name__ == "__main__":
 
 
     # Data preparation ==============================================================
-    if args.dataset=='metabric':
-        df_train = metabric.read_df()
-        cols_standardize = ['x0', 'x1', 'x2', 'x3', 'x8']
-        cols_leave = ['x4', 'x5', 'x6', 'x7']
-        cols_categorical = []
-        num_embeddings = [len(pd.concat([df_train,df_val,df_test])[cat].unique()) for cat in cols_categorical]
-        embedding_dims = [math.ceil(n_emb/2) for n_emb in num_embeddings]
-    elif args.dataset=='gbsg':
-        df_train = gbsg.read_df()
-        cols_standardize = ["x3", "x4", "x5", "x6"]
-        cols_leave = ["x0", "x2"]
-        cols_categorical = ["x1"]
-        num_embeddings = [len(pd.concat([df_train,df_val,df_test])[cat].unique()) for cat in cols_categorical]
-        embedding_dims = [math.ceil(n_emb/2) for n_emb in num_embeddings]
-    elif args.dataset=='support':
-        df_train = support.read_df()
-        cols_standardize =  ["x0", "x3", "x7", "x8", "x9", "x10", "x11", "x12", "x13"]
-        cols_leave = ["x1", "x4", "x5"]
-        cols_categorical =  ["x2", "x6"]
-        num_embeddings = [len(pd.concat([df_train,df_val,df_test])[cat].unique()) for cat in cols_categorical]
-        embedding_dims = [math.ceil(n_emb/2) for n_emb in num_embeddings]
-    elif args.dataset=='flchain':
-        df_train = flchain.read_df()
-        df_train.columns =  ["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "duration", "event"]
-        cols_standardize =  ["x0", "x3", "x4", "x6"]
-        cols_leave = ["x1", "x7"]
-        cols_categorical = ["x2", "x5"]
-        num_embeddings = [len(pd.concat([df_train,df_val,df_test])[cat].unique()) for cat in cols_categorical]
-        embedding_dims = [math.ceil(n_emb/2) for n_emb in num_embeddings]
-    elif args.dataset=='kkbox':
-        from kkbox import _DatasetKKBoxChurn
-        kkbox_v1 = _DatasetKKBoxChurn()
-        try:
-            df_train = kkbox_v1.read_df(subset='train')
-            df_val = kkbox_v1.read_df(subset='val')
-            df_test = kkbox_v1.read_df(subset='test')
-        except:
-            kkbox_v1.download_kkbox()
-            df_train = kkbox_v1.read_df(subset='train')
-            df_val = kkbox_v1.read_df(subset='val')
-            df_test = kkbox_v1.read_df(subset='test')
+
+    if args.dataset=='kkbox_v1':
+        kkbox_v1 = pickle.load(open('./data/kkbox_v1.pickle','rb'))
+        df_train = pd.concat([kkbox_v1['train'],kkbox_v1['val'],kkbox_v1['test'] ]) 
+        end_t = df_train['duration'].max()
+        covariates = list(df_train.columns)        
+
+        imputation_values = []
+        imputation_values_dict = {}
+        # city, gender, and registered_via contain nan values 
+        for k in df_train.keys():
+            if k =='msno' or k=='gender':
+                imputation_values.append(0)
+            else:
+                imputation_values.append(np.nanmedian(df_train[k], axis = 0))
+                if df_train[k].isnull().sum()>0:
+                    imputation_values_dict[k] = imputation_values[-1]
+
+        df_train = kkbox_v1['train']
+        df_val = kkbox_v1['val']
+        df_test = kkbox_v1['test']
+        
+
         cols_standardize = ['n_prev_churns', 'log_days_between_subs', 'log_days_since_reg_init' ,'age_at_start', 'log_payment_plan_days', 'log_plan_list_price', 'log_actual_amount_paid']
         cols_leave =['is_auto_renew', 'is_cancel', 'strange_age', 'nan_days_since_reg_init', 'no_prev_churns']
         cols_categorical = ['city', 'gender', 'registered_via']
+    
     elif args.dataset=='kkbox_v2':
-        from kkbox import _DatasetKKBoxAdmin
-        kkbox_v2 = _DatasetKKBoxAdmin()
-        try:
-            df_train = kkbox_v2.read_df()
-        except:
-            kkbox_v2.download_kkbox()
-            df_train = kkbox_v2.read_df()
+        df_train = pickle.load(open('./data/kkbox_v2.pickle','rb'))
+        end_t = df_train['duration'].max()
+        covariates = list(df_train.columns)
+        
+        imputation_values = []
+        imputation_values_dict = {}
+        # city, gender, and registered_via contain nan values 
+        for k in df_train.keys():
+            if k =='msno' or k=='gender':
+                imputation_values.append(0)
+            else:
+                imputation_values.append(np.nanmedian(df_train[k], axis = 0))
+                if df_train[k].isnull().sum()>0:
+                    imputation_values_dict[k] = imputation_values[-1]
+
+
         cols_standardize = ['n_prev_churns', 'log_days_between_subs', 'log_days_since_reg_init' ,'age_at_start', 'log_payment_plan_days', 'log_plan_list_price', 'log_actual_amount_paid']
         cols_leave =['is_auto_renew', 'is_cancel', 'strange_age', 'nan_days_since_reg_init', 'no_prev_churns']
         cols_categorical = ['city', 'gender', 'registered_via','payment_method_id']
+    else:
+        print("#"*30)
+        print("dataset should be \{ kkbox_v1,kkbox_v2 \}")
+        print("#"*30)
+        assert False
 
-
-    if not (args.dataset == 'kkobx'):
+    if args.dataset == 'kkbox_v2':
         df_test = df_train.sample(frac=0.2)
         df_train = df_train.drop(df_test.index)
         df_val = df_train.sample(frac=0.2)
         df_train = df_train.drop(df_val.index)
+
+    # imputation
+    df_train['gender'] = df_train['gender'].astype('category').cat.codes+1
+    df_val['gender'] = df_val['gender'].astype('category').cat.codes+1
+    df_test['gender'] = df_test['gender'].astype('category').cat.codes+1
+    for k in imputation_values_dict.keys():
+        df_train[k] = df_train[k].fillna(imputation_values_dict[k])
+        df_val[k] = df_val[k].fillna(imputation_values_dict[k])
+        df_test[k] = df_test[k].fillna(imputation_values_dict[k])
 
 
     standardize = [([col], StandardScaler()) for col in cols_standardize]
@@ -172,12 +180,13 @@ if __name__ == "__main__":
     lr = lrfinder.get_best_lr()
     model.optimizer.set_lr(lr)
 
-    wandb.init(project='icml_'+args.dataset+'_baseline', 
-            group='coxcc'+'_'+args.optimizer,
-            name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
-            config=args)
+    if args.wandb:
+        wandb.init(project='ICLR_'+args.dataset+'_baseline', 
+                group='coxcc'+'_'+args.optimizer,
+                name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
+                config=args)
 
-    wandb.watch(net)
+        wandb.watch(net)
 
     # Loss configuration ============================================================
 
@@ -203,9 +212,11 @@ if __name__ == "__main__":
     ibs = ev.integrated_brier_score(time_grid)
     nbll = ev.integrated_nbll(time_grid)
     val_loss = min(log.monitors['val_'].scores['loss']['score'])
-    wandb.log({'val_loss':val_loss,
-                'ctd':ctd,
-                'ibs':ibs,
-                'nbll':nbll})
-    wandb.finish()
+
+    if args.wandb:
+        wandb.log({'val_loss':val_loss,
+                    'ctd':ctd,
+                    'ibs':ibs,
+                    'nbll':nbll})
+        wandb.finish()
 

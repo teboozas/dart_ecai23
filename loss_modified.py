@@ -210,19 +210,19 @@ class DSAFTRankLoss(torch.nn.Module):
         self.beta = beta
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
         loss = dsaft_rank_loss(log_h, durations, events, alpha = self.alpha, beta = self.beta)
-        wandb.log({'loss':loss})
+        if self.wandb: wandb.log({'loss':loss})
         return loss
 
 class DSAFTMAELoss(torch.nn.Module):
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
         loss = dsaft_mae_loss(log_h, durations, events)
-        wandb.log({'loss':loss})
+        if self.wandb: wandb.log({'loss':loss})
         return loss
 
 class DSAFTRMSELoss(torch.nn.Module):
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
         loss = dsaft_rmse_loss(log_h, durations, events)
-        wandb.log({'loss':loss})
+        if self.wandb: wandb.log({'loss':loss})
         return loss
 
 class DSAFTNKSPLLoss(torch.nn.Module):
@@ -232,7 +232,7 @@ class DSAFTNKSPLLoss(torch.nn.Module):
         self.sigma = sigma
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
         loss = dsaft_nkspl_loss(log_h, durations, events, an=self.an, sigma=self.sigma)
-        wandb.log({'loss':loss})
+        if self.wandb: wandb.log({'loss':loss})
         return loss
 
 class DSAFTNKSPLLossNew(torch.nn.Module):
@@ -242,5 +242,5 @@ class DSAFTNKSPLLossNew(torch.nn.Module):
         self.sigma = sigma
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
         loss = dsaft_nkspl_loss_new(log_h, durations, events, an=self.an, sigma=self.sigma)
-        wandb.log({'loss':loss})
+        if self.wandb: wandb.log({'loss':loss})
         return loss

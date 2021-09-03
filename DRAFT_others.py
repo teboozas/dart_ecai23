@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument('--disc_updates', type=int, default=1)
 
 
-    #python search_modified_draft.py --wandb --dataset=metabric --start_fold=0 --end_fold=1
+    #python DRAFT_others.py --wandb --dataset=gbsg --start_fold=0 --end_fold=1
     # source activate pycox
     parser.add_argument('--start_fold', type=int, default=0)
     parser.add_argument('--start_iter', type=int, default=0)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     if os.path.exists(data_file_name):
         with open(data_file_name, 'rb') as f:
             data_split = pickle.load(f)
-    df_train = pd.concat([data_split['0']['train'],data_split['0']['valid'],data_split['0']['test'] ]) 
+    df_train = pd.concat([data_split['0']['train'],data_split['0']['valid'],data_split['0']['test'] ])
 
     # Data preparation ==============================================================
     if args.dataset=='metabric':
@@ -100,54 +100,10 @@ if __name__ == "__main__":
         df_train.columns =  ["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "duration", "event"]
         cols_standardize =  ["x0", "x3", "x4", "x6"]
         cols_categorical = ["x1", "x2", "x5", "x7"]
-    elif args.dataset=='kkbox':
-        from kkbox import _DatasetKKBoxChurn
-        kkbox_v1 = _DatasetKKBoxChurn()
-        try:
-            df_train = kkbox_v1.read_df(subset='train')
-            df_val = kkbox_v1.read_df(subset='val')
-            df_test = kkbox_v1.read_df(subset='test')
-        except:
-            kkbox_v1.download_kkbox()
-            df_train = kkbox_v1.read_df(subset='train')
-            df_val = kkbox_v1.read_df(subset='val')
-            df_test = kkbox_v1.read_df(subset='test')
-        cols_standardize = ['n_prev_churns', 'log_days_between_subs', 'log_days_since_reg_init' ,'age_at_start', 'log_payment_plan_days', 'log_plan_list_price', 'log_actual_amount_paid']
-        cols_categorical =['city', 'gender', 'registered_via', 'is_auto_renew', 'is_cancel', 'strange_age', 'nan_days_since_reg_init', 'no_prev_churns']
-
-    elif args.dataset=='kkbox_v2':
-        from kkbox import _DatasetKKBoxAdmin
-        kkbox_v2 = _DatasetKKBoxAdmin()
-        try:
-            df_train = kkbox_v2.read_df()
-        except:
-            kkbox_v2.download_kkbox()
-            df_train = kkbox_v2.read_df()
-        cols_standardize = ['n_prev_churns', 'log_days_between_subs', 'log_days_since_reg_init' ,'age_at_start', 'log_payment_plan_days', 'log_plan_list_price', 'log_actual_amount_paid']
-        cols_categorical =['city', 'gender', 'registered_via','payment_method_id', 'is_auto_renew', 'is_cancel', 'strange_age', 'nan_days_since_reg_init', 'no_prev_churns']
-
     end_t = df_train['duration'].max()
     covariates = list(df_train.columns)
     imputation_values = np.nanmedian(df_train, axis = 0)
     # pdb.set_trace()
-
-
-
-
-    # Data Split ======================================================
-    # if args.dataset=='kkbox_v2':
-    #     df_test = df_train.sample(frac=0.25)
-    #     df_train = df_train.drop(df_test.index)
-    #     df_val = df_train.sample(frac=0.1)
-    #     df_train = df_train.drop(df_val.index)
-    # elif not (args.dataset == 'kkbox'):
-    #     df_test = df_train.sample(frac=0.2)
-    #     df_train = df_train.drop(df_test.index)
-    #     df_val = df_train.sample(frac=0.2)
-    #     df_train = df_train.drop(df_val.index)
-
-    # pdb.set_trace()
-
 
 
     # Hyperparameter setup =========================================================
@@ -159,9 +115,6 @@ if __name__ == "__main__":
     list_num_layers=[1, 2, 4]
     
 
-    FINAL_CTD = []
-    FINAL_IBS = []
-    FINAL_NBLL = []
     for fold in range(args.start_fold,args.end_fold):
 
         fold_ctd = []
@@ -174,9 +127,9 @@ if __name__ == "__main__":
         split_valid = data_split[str(fold)]['valid']
         split_test = data_split[str(fold)]['test']
 
-        for i in range(start_iter,300):
+        for i in range(start_iter,100):
             
-            print(f'[{fold} fold][{i+1}/300]')
+            print(f'[{fold} fold][{i+1}/100]')
 
             args.lr = random.choice(list_lr)
             args.batch_size = random.choice(list_batch_size)
@@ -248,6 +201,12 @@ if __name__ == "__main__":
             valid = {'x': x_val, 'e': y_val[1], 't': y_val[0]}
             test = {'x': x_test, 'e': events_test, 't': durations_test}
 
+            # patience=10 epochs
+            max_epochs = 512
+            iter_per_epoch = train['x'].shape[0]/args.batch_size
+            args.require_improvement = int(10*iter_per_epoch)
+            args.num_iterations = int(iter_per_epoch*max_epochs)
+
             model = DeepRegularizedAFT(learning_rate = args.lr,
                                     require_improvement = args.require_improvement,
                                     num_iterations = args.num_iterations,
@@ -269,11 +228,11 @@ if __name__ == "__main__":
                                     end_t = end_t,
                                     seed = args.seed,
                                     sample_size = 100,
-                                    max_epochs = 1000,
+                                    max_epochs = max_epochs,
                                     path_large_data = "")
             # Training ======================================================================
             if args.wandb:
-                wandb.init(project='aaai_'+args.dataset+"_DATE&DRAFT", 
+                wandb.init(project='ICLR_'+args.dataset+"_baseline", 
                         group=f"DRAFT_fold{fold}",
                         name=f'LR{args.lr}_L2{args.l2_reg}_DIM{args.num_nodes}_L{args.num_layers}',
                         config=args)

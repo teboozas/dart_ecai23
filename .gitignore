@@ -1,1 +1,8 @@
-*.pickle
+kkbox_v1.pickle
+kkbox_v2.pickle
+*.pt
+__pycache__
+summaries
+*.__pycache__
+*.pyc
+wandb
