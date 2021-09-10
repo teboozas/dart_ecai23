@@ -18,6 +18,9 @@ from draft.utils.generated_times import plot_predicted_distribution
 from draft.utils.metrics import plot_cost
 from draft.utils.pre_processing import risk_set, get_missing_mask, flatten_nested
 from draft.utils.tf_helpers import show_all_variables
+import pdb
+import progressbar
+import wandb
 
 def get_score(n, t, y_test, delta_test, pred_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual):
     exp_residual_t = np.nan_to_num(np.exp(np.repeat(np.log(t),n) - np.log(pred_test).reshape(-1)))
@@ -318,14 +321,18 @@ class DeepRegularizedAFT(object):
         best_ci = 0
         best_validation_epoch = 0
         last_improvement = 0
+        best_cost = 1e16
+        last_improvement_iter = 0
 
         start_time = time.time()
         epochs = 0
 #        show_all_variables()
         j = 0
-
+        bar = progressbar.ProgressBar(widgets=[' [', progressbar.Timer(), '] ', progressbar.Bar(), ' (', progressbar.ETA(), ') ',],maxval=self.num_iterations).start()
         for i in range(self.num_iterations):
             # Batch Training
+            bar.update(i)
+            # print(f'[{i}/{self.num_iterations}] iterations')
             run_options = tf.RunOptions(timeout_in_ms=4000)
             x_batch, t_batch, e_batch = self.session.run([self.x_batch, self.t_batch, self.e_batch],
                                                          options=run_options)
@@ -426,6 +433,27 @@ class DeepRegularizedAFT(object):
 #                            train_recon,
 #                            train_ci, valid_rae, valid_cost, valid_ranking, valid_reg, valid_lik, valid_recon,
 #                            valid_ci, improved_str)
+
+                if self.wandb:
+                    wandb.log({
+                        f"iter":str(i)+f"/{self.num_iterations}",
+                        "train cost":train_cost,
+                        "train ci":train_ci,
+                        "train ibs":train_ibs,
+                        "train ibll":train_ibll,
+                        "valid cost":valid_cost,
+                        "valid ci":valid_ci,
+                    })
+                if valid_cost < best_cost:
+                    best_cost = valid_cost
+                    last_improvement_iter = i
+
+                if ((i - last_improvement_iter)>self.require_improvement) or math.isnan(valid_cost):
+                    # pdb.set_trace()
+                    print("No improvement found in a while, stopping optimization.")
+                    break
+
+
                 optimization_print = "Iteration: {} || TRAIN loss: {}, CI: {}, IBS: {}, IBLL: {} || VAL loss: {}, CI:{}, improved: {}".format(i + 1, np.round(train_cost, 4), np.round(train_ci, 4), np.round(train_ibs, 4), np.round(train_ibll, 4), np.round(valid_cost, 4), np.round(valid_ci, 4), improved_str)
                 if (i + 1) % 50 == 0:
                     print(optimization_print)
@@ -435,8 +463,9 @@ class DeepRegularizedAFT(object):
                     print("No improvement found in a while, stopping optimization.")
                     # Break out from the for-loop.
                     break
-        # Ending time.
 
+        # Ending time.
+        bar.finish()
         end_time = time.time()
         time_dif = end_time - start_time
         time_dif_print = "Time usage: " + str(timedelta(seconds=int(round(time_dif))))
@@ -469,7 +498,18 @@ class DeepRegularizedAFT(object):
         session_dict = {'Test': get_dict(x=self.test_x, t=self.test_t, e=self.test_e),
                         'Train': get_dict(x=self.train_x, t=self.train_t, e=self.train_e),
                         'Valid': get_dict(x=self.valid_x, t=self.valid_t, e=self.valid_e)}
+
         self.time_related_metrics(best_epoch, epochs, session_dict=session_dict)
+        
+        if self.wandb:
+            try:
+                wandb.log({'val_loss':self.val_loss,
+                        'ctd':self.ctd,
+                        'ibs':self.ibs,
+                        'nbll':self.nbll})
+                wandb.finish()
+            except:
+                pdb.set_trace()
 
         self.session.close()
 

@@ -193,7 +193,7 @@ if __name__ == "__main__":
                 model=DeepHitSingle(net,optimizer=tt.optim.AdamWR(lr=args.lr, decoupled_weight_decay=args.weight_decay,cycle_eta_multiplier=0.8), alpha=args.alpha, sigma=args.sigma, duration_index=labtrans.cuts)
 
             if args.wandb:
-                wandb.init(project='ICLR_'+args.dataset+'_baseline', 
+                wandb.init(project='ICLR_csv_'+args.dataset+'_baseline', 
                         group=f'deephit_fold{fold}_'+args.loss,
                         name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
                         config=args)
@@ -223,6 +223,12 @@ if __name__ == "__main__":
             ibs = ev.integrated_brier_score(time_grid)
             nbll = ev.integrated_nbll(time_grid)
             val_loss = min(log.monitors['val_'].scores['loss']['score'])
+
+            import csv
+            with open('./'+'ICLR_csv_'+args.dataset+'_'+'DEEPHIT.csv','a',newline='') as f:
+                wr = csv.writer(f)
+                wr.writerow(['fold'+str(fold), i, val_loss, ctd, ibs, nbll, args])
+
             if args.wandb:
                 wandb.log({'val_loss':val_loss,
                             'ctd':ctd,

@@ -74,6 +74,7 @@ if __name__ == "__main__":
 
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+    tf.set_random_seed(args.seed)
 
 
     data_file_name = os.path.join('./data/',args.dataset+'.pickle')
@@ -203,8 +204,9 @@ if __name__ == "__main__":
 
             # patience=10 epochs
             max_epochs = 512
+            patience = 10
             iter_per_epoch = train['x'].shape[0]/args.batch_size
-            args.require_improvement = int(10*iter_per_epoch)
+            args.require_improvement = int(patience*iter_per_epoch)
             args.num_iterations = int(iter_per_epoch*max_epochs)
 
             model = DeepRegularizedAFT(learning_rate = args.lr,
@@ -230,23 +232,39 @@ if __name__ == "__main__":
                                     sample_size = 100,
                                     max_epochs = max_epochs,
                                     path_large_data = "")
+            
+            # pdb.set_trace()
             # Training ======================================================================
             if args.wandb:
-                wandb.init(project='ICLR_'+args.dataset+"_baseline", 
+                model.wandb = True
+                wandb.init(project='ICLR_csv_'+args.dataset+"_baseline", 
                         group=f"DRAFT_fold{fold}",
                         name=f'LR{args.lr}_L2{args.l2_reg}_DIM{args.num_nodes}_L{args.num_layers}',
                         config=args)
-
+            else:
+                model.wandb = False
             # wandb.watch(model)
 
             with model.session:
                 model.train_test()
 
+            try:
+                import csv
+                with open('./'+'ICLR_csv_'+args.dataset+'_'+'DRAFT.csv','a',newline='') as f:
+                    wr = csv.writer(f)
+                    wr.writerow(['fold'+str(fold), i, model.val_loss, model.ctd, model.ibs, model.nbll, args])
+            except:
+                pdb.set_trace()
 
-            if args.wandb:
-                wandb.log({'val_loss':model.val_loss,
-                        'ctd':model.ctd,
-                        'ibs':model.ibs,
-                        'nbll':model.nbll})
-                wandb.finish()
+            # if args.wandb:
+            #     try:
+            #         wandb.log({'val_loss':model.val_loss,
+            #                 'ctd':model.ctd,
+            #                 'ibs':model.ibs,
+            #                 'nbll':model.nbll})
+            #         wandb.finish()
+            #     except:
+            #         pdb.set_trace()
+            
+            break
                 

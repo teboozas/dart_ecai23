@@ -270,7 +270,7 @@ if __name__ == "__main__":
     # Training ======================================================================
     if args.wandb:
         model.loss.wandb = True
-        wandb.init(project='ICLR_'+args.dataset+'_baseline', 
+        wandb.init(project='ICLR_csv_'+args.dataset+'_baseline', 
                 group='DSAFT'+'_'+args.loss+'_'+args.optimizer,
                 name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
                 config=args)
@@ -317,6 +317,10 @@ if __name__ == "__main__":
     ibs = sum(bs * ds) / (time_grid.max() - time_grid.min())
     ibll = sum(nbll * ds) / (time_grid.max() - time_grid.min())
     
+    import csv
+    with open('./'+'ICLR_csv_'+args.dataset+'_'+'DSAFT.csv','a',newline='') as f:
+        wr = csv.writer(f)
+        wr.writerow([val_loss, ctd, ibs, ibll, args])
     if args.wandb:
         wandb.log({'val_loss':val_loss,
                     'ctd':ctd,

@@ -6,3 +6,4 @@ summaries
 *.__pycache__
 *.pyc
 wandb
+*.csv
