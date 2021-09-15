@@ -176,7 +176,7 @@ class DeepRegularizedAFT(object):
             self._objective()
             self.session = tf.Session(config=self.config)
 
-            self.capacity = 1400
+            self.capacity = self.batch_size+1#1400
             self.coord = tf.train.Coordinator()
             enqueue_thread = threading.Thread(target=self.enqueue, daemon=True)
             self.queue = tf.RandomShuffleQueue(capacity=self.capacity, dtypes=[tf.float32, tf.float32, tf.float32],
@@ -549,7 +549,7 @@ class DeepRegularizedAFT(object):
                                                                                           outcomes=session_dict[
                                                                                               'outcomes'])
 
-        observed_idx = self.extract_observed_death(name=name, observed_e=data_e, observed_t=data_t, save=save)
+        # observed_idx = self.extract_observed_death(name=name, observed_e=data_e, observed_t=data_t, save=save)
         predicted_time = self.session.run(self.predicted_time, feed_dict=session_dict['feed_dict'])
         
         if name == 'Train':
@@ -557,12 +557,12 @@ class DeepRegularizedAFT(object):
         if name == 'Valid':
             self.val_loss = cost
 
-        observed_empirical = data_t[observed_idx]
+        # observed_empirical = data_t[observed_idx]
 #        print("predicted_time:{}".format(predicted_time.shape))
-        observed_predicted = predicted_time[observed_idx]
-        observed_ci = concordance_index(event_times=observed_empirical, predicted_scores=np.nan_to_num(observed_predicted),
-                                        event_observed=data_e[observed_idx])
-        corr = spearmanr(observed_empirical, observed_predicted)
+        # observed_predicted = predicted_time[observed_idx]
+        # observed_ci = concordance_index(event_times=observed_empirical, predicted_scores=np.nan_to_num(observed_predicted),
+        #                                 event_observed=data_e[observed_idx])
+        # corr = spearmanr(observed_empirical, observed_predicted)
 #        results = ":{} RAE:{}, Loss:{}, Lik:{}, Reg:{}, Ranking{}, Total_T_Recon:{}, CI:{}, Observed: CI:{}, " \
 #                  "Correlation:{}".format(name, rae, cost, lik, reg, ranking, recon, ci, observed_ci, corr)
 

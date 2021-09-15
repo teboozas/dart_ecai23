@@ -183,7 +183,7 @@ class DATE_AE(object):
             self._objective()
             self.session = tf.Session(config=self.config)
 
-            self.capacity = 1400
+            self.capacity = self.batch_size+1#1400
             self.coord = tf.train.Coordinator()
             enqueue_thread = threading.Thread(target=self.enqueue)
             self.queue = tf.RandomShuffleQueue(capacity=self.capacity, dtypes=[tf.float32, tf.float32, tf.float32],
