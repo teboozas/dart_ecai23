@@ -71,7 +71,7 @@ def get_scores(y_train, delta_train, y_test, delta_test, y_train_pred, y_test_pr
     bss = []
     nblls = []
     for t in time_grid:
-        bs, nbll = get_score_tmp(n, t, y_test, delta_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual, y_test_pred)
+        bs, nbll = get_score(n, t, y_test, delta_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual, y_test_pred)
         bss.append(bs)
         nblls.append(-nbll)
 
@@ -471,7 +471,7 @@ class DATE_AE(object):
 #            print(e_batch)
             train_bs, train_bll = get_scores(y_train = t_batch, delta_train = e_batch,
                                                   y_test = t_batch, delta_test = e_batch,
-                                                  pred_train = train_time.reshape(t_batch.shape), pred_test = train_time.reshape(t_batch.shape),
+                                                  y_train_pred = train_time.reshape(t_batch.shape), y_test_pred = train_time.reshape(t_batch.shape),
                                                   time_grid = train_time_grid,
                                                   surv_residual = False, cens_residual = False)
             
