@@ -593,7 +593,7 @@ class DeepRegularizedAFT(object):
             self.ctd = ci
             self.ibs = ibs
             self.nbll = ibll
-            
+            self.predicted_time_test = median_predicted_time
 #            np.save('{}_predicted_time'.format(name), predicted_time)
 #            np.save('{}_empirical_time'.format(name), data_t)
 #            np.save('{}_data_e'.format(name), data_e)
