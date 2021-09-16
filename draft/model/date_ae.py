@@ -679,6 +679,7 @@ class DATE_AE(object):
             self.ctd = ci
             self.ibs = ibs
             self.nbll = ibll
+            self.predicted_time_test = median_predicted_time
 #            self.save_time_samples(x=data_x[observed_idx], e=data_e[observed_idx],
 #                                   t=data_t[observed_idx], name='obs_samples_predicted', cens=False)
 
