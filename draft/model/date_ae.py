@@ -10,6 +10,7 @@ import tensorflow as tf
 from lifelines import KaplanMeierFitter, NelsonAalenFitter
 from lifelines.utils import concordance_index
 from scipy.stats.stats import spearmanr
+from sklearn.preprocessing import StandardScaler
 
 from draft.model.denoising_network import generate_x_given_z, generate_z_given_x
 from draft.model.risk_network import pt_given_z, discriminator_two, discriminator_one
@@ -21,47 +22,47 @@ from draft.utils.tf_helpers import show_all_variables
 import wandb
 import progressbar
 
-def get_score(n, t, y_test, delta_test, pred_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual):
-    exp_residual_t = np.nan_to_num(np.exp(np.repeat(np.log(t),n) - np.log(pred_test).reshape(-1)))
-
+def get_score(n, t, y_test, delta_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual, y_test_pred):
+    exp_residual_t = np.nan_to_num(np.exp(np.repeat(np.log(t),n) - y_test_pred.reshape(-1)))
+    
     if surv_residual == True:
         H_base = naf_base.cumulative_hazard_at_times(exp_residual_t).values
     elif surv_residual == False:
         H_base = naf_base.cumulative_hazard_at_times(t).values        
-
+    
     if cens_residual == True:
         cens_t = kmf_cens.survival_function_at_times(exp_residual_t).values
     elif cens_residual == False:
         cens_t = np.repeat(kmf_cens.survival_function_at_times(t).values, n)
 
     surv_cond = np.exp(-(H_base * exp_predict_neg_test)) - 1e-16
-
+    
     indicator_first = (y_test <= t) * delta_test
     indicator_second = (y_test > t) * 1
 
     first_bs = np.power(surv_cond, 2) * indicator_first / cens_test
     second_bs = np.power(1 - surv_cond, 2) * indicator_second / cens_t
     bs = (first_bs + second_bs).sum() / n
-
+    
     first_nbll = np.log(1 - surv_cond + 1e-16) * indicator_first / cens_test
     second_nbll = np.log(surv_cond + 1e-16) * indicator_second / cens_t
     nbll = (first_nbll + second_nbll).sum() / n
-
+    
     return (bs, nbll)
 
-def get_scores(y_train = None, delta_train = None, y_test = None, delta_test = None, pred_train = None, pred_test = None, time_grid = None, surv_residual = False, cens_residual = False):
+def get_scores(y_train, delta_train, y_test, delta_test, y_train_pred, y_test_pred, time_grid, surv_residual = False, cens_residual = False):
     n = y_test.shape[0]
 
     # compute residual from training data
-    exp_residual_train = np.nan_to_num(np.exp(np.log(y_train) - np.log(pred_train).reshape(-1)))
-    exp_residual_test = np.nan_to_num(np.exp(np.log(y_test) - np.log(pred_test).reshape(-1)))
+    exp_residual_train = np.nan_to_num(np.exp(np.log(y_train) - y_train_pred.reshape(-1)))
+    exp_residual_test = np.nan_to_num(np.exp(np.log(y_test) - y_test_pred.reshape(-1)))
 
     # compute exp(-theta) from test data to evaluate accelerating component
-    exp_predict_neg_test = np.nan_to_num(np.exp(-np.log(pred_test)).reshape(-1))
+    exp_predict_neg_test = np.nan_to_num(np.exp(-y_test_pred).reshape(-1))
 
     naf_base = NelsonAalenFitter().fit(y_train, event_observed = delta_train)
     kmf_cens = KaplanMeierFitter().fit(y_train, event_observed = 1 - delta_train)
-
+    
     if cens_residual == True:
         cens_test = kmf_cens.survival_function_at_times(exp_residual_test)
     elif cens_residual == False:
@@ -70,11 +71,11 @@ def get_scores(y_train = None, delta_train = None, y_test = None, delta_test = N
     bss = []
     nblls = []
     for t in time_grid:
-        bs, nbll = get_score(n, t, y_test, delta_test, pred_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual)
+        bs, nbll = get_score_tmp(n, t, y_test, delta_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual, y_test_pred)
         bss.append(bs)
         nblls.append(-nbll)
 
-    return (np.array(bss), np.array(nblls))        
+    return (np.array(bss), np.array(nblls))      
 
 
 
@@ -660,11 +661,31 @@ class DATE_AE(object):
 
         corr = spearmanr(observed_empirical, observed_predicted)
         ##### ibs / ibll #####
+        def replace_zero(duration):
+            return np.where(duration <= 0.0, duration + np.sort(np.unique(duration))[1], duration)
+
+        train_log_replace = np.log(replace_zero(self.train_t)).reshape(-1, 1)
+        scaler_train = StandardScaler().fit(train_log_replace)
+
+        y_train_transformed = np.exp(scaler_train.transform(train_log_replace).reshape(-1))
+
+        test_log_replace = np.log(replace_zero(data_t)).reshape(-1, 1)
+        y_test_transformed = np.exp(scaler_train.transform(test_log_replace).reshape(-1))
+
+        train_pred_log_replace = np.log(replace_zero(self.predicted_time_train)).reshape(-1, 1)
+        y_train_pred_transformed = np.exp(scaler_train.transform(train_pred_log_replace).reshape(-1))
+        y_train_pred = np.log(y_train_pred_transformed).reshape(-1, 1)
+
+        test_pred_log_replace = np.log(replace_zero(median_predicted_time)).reshape(-1, 1)
+        y_test_pred_transformed = np.exp(scaler_train.transform(test_pred_log_replace).reshape(-1))
+        y_test_pred = np.log(y_test_pred_transformed).reshape(-1, 1)
+
         time_grid = np.linspace(data_t.min(), data_t.max(), 100)
+        time_grid = np.exp(scaler_train.transform(np.log(time_grid.reshape(-1, 1) + 1e-16))).reshape(-1)
         ds = np.array(time_grid - np.array([0.0] + time_grid[:-1].tolist()))
-        bs, bll = get_scores(y_train = self.train_t, delta_train = self.train_e,
-                             y_test = data_t, delta_test = data_e,
-                             pred_train = self.predicted_time_train, pred_test = median_predicted_time,
+        bs, bll = get_scores(y_train = y_train_transformed, delta_train = self.train_e,
+                             y_test = y_test_transformed, delta_test = data_e,
+                             y_train_pred = y_train_pred, y_test_pred = y_test_pred,
                              time_grid = time_grid, surv_residual = False, cens_residual = False)
 
         ibs = sum(bs * ds) / (time_grid.max() - time_grid.min())
