@@ -356,6 +356,8 @@ class DATE_AE(object):
             predicted_time[i:j] = np.median(temp_pred_time, axis=0)
 
             total_ranking += ranking
+            if cost > 1e8:
+                cost = 1e8
             total_cost += cost
             total_rae += rae
             total_gen_loss += gen_loss
