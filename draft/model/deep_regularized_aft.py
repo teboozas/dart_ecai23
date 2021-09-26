@@ -262,6 +262,8 @@ class DeepRegularizedAFT(object):
                 feed_dict=feed_dict)
 
             total_ranking += ranking
+            if cost > 1e8:
+                cost = 1e8
             total_cost += cost
             total_rae += rae
             total_log_lik += lik
