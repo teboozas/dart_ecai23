@@ -475,7 +475,7 @@ class DATE_AE(object):
                                                   y_test = t_batch, delta_test = e_batch,
                                                   y_train_pred = train_time.reshape(t_batch.shape), y_test_pred = train_time.reshape(t_batch.shape),
                                                   time_grid = train_time_grid,
-                                                  surv_residual = False, cens_residual = False)
+                                                  surv_residual = True, cens_residual = True)
             
             train_ibs = sum(train_bs * train_ds) / (train_time_grid.max() - train_time_grid.min())
             train_ibll = sum(train_bll * train_ds) / (train_time_grid.max() - train_time_grid.min())
@@ -688,7 +688,7 @@ class DATE_AE(object):
         bs, bll = get_scores(y_train = y_train_transformed, delta_train = self.train_e,
                              y_test = y_test_transformed, delta_test = data_e,
                              y_train_pred = y_train_pred, y_test_pred = y_test_pred,
-                             time_grid = time_grid, surv_residual = False, cens_residual = False)
+                             time_grid = time_grid, surv_residual = True, cens_residual = True)
 
         ibs = sum(bs * ds) / (time_grid.max() - time_grid.min())
         ibll = sum(bll * ds) / (time_grid.max() - time_grid.min())
