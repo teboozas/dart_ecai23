@@ -44,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument('--alpha', type=float, default=0.0)
     parser.add_argument('--beta', type=float, default=0.0)
     parser.add_argument('--start_fold', type=int, default=0)
-    parser.add_argument('--start_iter', type=int, default=115)
+    parser.add_argument('--start_iter', type=int, default=0)
     parser.add_argument('--end_fold', type=int, default=5)
     
 
@@ -120,9 +120,10 @@ if __name__ == "__main__":
     list_weight_decay=[0.4, 0.2, 0.1, 0.05, 0.02, 0.01, 0.001]
     list_dropout=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     list_distribution = ['LogNormal', 'Weibull']#,'Normal']
-    list_k = [3, 4, 6]
+    list_k = [3, 4,5, 6]
 
     # Training =====================================================================
+    # pdb.set_trace()
     for fold in range(args.start_fold,args.end_fold):
         fold_ctd = []
         fold_ibs = []
@@ -134,7 +135,7 @@ if __name__ == "__main__":
         split_valid = data_split[str(fold)]['valid']
         split_test = data_split[str(fold)]['test']
 
-        for i in range(start_iter, 100):
+        for i in range(start_iter, 300):
             args.num_layers = random.choice(list_num_layers)
             args.num_nodes = random.choice(list_num_nodes)
             args.batch_size = random.choice(list_batch_size)
@@ -226,7 +227,7 @@ if __name__ == "__main__":
                         name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
                         config=args)
 
-                wandb.watch(model)
+                # wandb.watch(model)
 
 
             max_epochs = args.epochs
