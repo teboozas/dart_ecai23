@@ -8,15 +8,9 @@ import torch
 from torch import Tensor
 import torchtuples as tt
 import argparse
-from pycox.datasets import metabric, gbsg, support, flchain, nwtco
-from pycox.models import CoxPH
 from pycox.evaluation import EvalSurv
-import warnings
-from lifelines import KaplanMeierFitter
 import wandb
 import pdb
-from lifelines import NelsonAalenFitter
-from lifelines.utils import concordance_index
 import numpy as np
 import pandas as pd
 import warnings
@@ -219,7 +213,7 @@ if __name__ == "__main__":
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             # pdb.set_trace()
-            model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers)
+            model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers,cuda=True)
 
             if args.wandb:
                 wandb.init(project='ICLR_DSM_'+args.dataset+'_baseline', 
