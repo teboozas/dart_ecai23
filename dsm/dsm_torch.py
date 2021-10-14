@@ -36,7 +36,7 @@ Note: NOT DESIGNED TO BE CALLED DIRECTLY!!!
 import torch.nn as nn
 import torch
 import numpy as np
-
+import pdb
 __pdoc__ = {}
 
 for clsn in ['DeepSurvivalMachinesTorch',
@@ -47,7 +47,7 @@ for clsn in ['DeepSurvivalMachinesTorch',
     __pdoc__[clsn+'.'+membr] = False
 
 
-def create_representation(inputdim, layers, activation):
+def create_representation(inputdim, layers, activation, dropout=0.0):
   r"""Helper function to generate the representation function for DSM.
 
   Deep Survival Machines learns a representation (\ Phi(X) \) for the input
@@ -85,6 +85,7 @@ def create_representation(inputdim, layers, activation):
 
   for hidden in layers:
     modules.append(nn.Linear(prevdim, hidden, bias=False))
+    modules.append(nn.Dropout(p=dropout))
     modules.append(act)
     prevdim = hidden
 
@@ -174,7 +175,7 @@ class DeepSurvivalMachinesTorch(nn.Module):
 
   def __init__(self, inputdim, k, layers=None, dist='Weibull',
                temp=1000., discount=1.0, optimizer='Adam',
-               risks=1):
+               risks=1, weight_decay=0.0, dropout=0.0):
     super(DeepSurvivalMachinesTorch, self).__init__()
 
     self.k = k
@@ -183,6 +184,8 @@ class DeepSurvivalMachinesTorch(nn.Module):
     self.discount = float(discount)
     self.optimizer = optimizer
     self.risks = risks
+    self.weight_decay = weight_decay
+    self.dropout = dropout
 
     if layers is None:
       layers = []
@@ -195,7 +198,7 @@ class DeepSurvivalMachinesTorch(nn.Module):
 
     self._init_dsm_layers(lastdim)
 
-    self.embedding = create_representation(inputdim, layers, 'ReLU6')
+    self.embedding = create_representation(inputdim, layers, 'ReLU6', dropout=self.dropout)
 
 
   def forward(self, x, risk='1'):
@@ -206,6 +209,7 @@ class DeepSurvivalMachinesTorch(nn.Module):
         a torch.tensor of the input features.
 
     """
+    # pdb.set_trace()
     xrep = self.embedding(x)
     dim = x.shape[0]
     return(self.act(self.shapeg[risk](xrep))+self.shape[risk].expand(dim, -1),

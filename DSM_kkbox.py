@@ -199,7 +199,7 @@ if __name__ == "__main__":
     # Model preparation =============================================================    
     layers = [args.num_nodes]* args.num_layers
 
-    model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers,cuda=True)
+    model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers,cuda=True, weight_decay=args.weight_decay, dropout=args.dropout)
 
 
     if args.wandb:

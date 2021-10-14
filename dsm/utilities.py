@@ -40,7 +40,7 @@ import logging
 def get_optimizer(model, lr):
 
   if model.optimizer == 'Adam':
-    return torch.optim.Adam(model.parameters(), lr=lr)
+    return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=model.weight_decay)
   elif model.optimizer == 'SGD':
     return torch.optim.SGD(model.parameters(), lr=lr)
   elif model.optimizer == 'RMSProp':

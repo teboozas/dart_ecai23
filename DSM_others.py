@@ -213,7 +213,7 @@ if __name__ == "__main__":
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
             # pdb.set_trace()
-            model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers,cuda=True)
+            model = DeepSurvivalMachines(k=args.k,distribution=args.distribution,layers=layers,cuda=True, weight_decay=args.weight_decay, dropout=args.dropout)
 
             if args.wandb:
                 wandb.init(project='ICLR_DSM_'+args.dataset+'_baseline', 
