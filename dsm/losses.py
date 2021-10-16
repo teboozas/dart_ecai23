@@ -38,6 +38,7 @@ These losses are optimized when training DSM.
 import numpy as np
 import torch
 import torch.nn as nn
+import pdb
 
 def _normal_loss(model, t, e, risk='1'):
 
@@ -104,24 +105,38 @@ def _weibull_loss(model, t, e, risk='1'):
     k = k_[:, g]
     b = b_[:, g]
 
+    # t += 1e-8
     s = - (torch.pow(torch.exp(b)*t, torch.exp(k)))
     f = k + b + ((torch.exp(k)-1)*(b+torch.log(t)))
     f = f + s
 
     uncens = np.where(e.cpu().data.numpy() == int(risk))[0]
     cens = np.where(e.cpu().data.numpy() != int(risk))[0]
-    ll += f[uncens].sum() + s[cens].sum()
+    # f_inf_idx = (np.inf == f).int().nonzero().squeeze()
+    # s_inf_idx = (np.inf == s).int().nonzero().squeeze()
 
+    ll += f[uncens].sum() + s[cens].sum()
+    # if np.isnan(f[uncens].sum().detach().cpu()) or np.inf ==f[uncens].sum().detach().cpu():
+    #   print(1)
+    #   pdb.set_trace()
+    # if np.isnan(s[cens].sum().detach().cpu()) or np.inf ==s[cens].sum().detach().cpu():
+    #   print(2)
+    #   pdb.set_trace()
+    
+    # print(f'f[uncens].sum(): {f[uncens].sum()} | s[cens].sum(): {s[cens].sum()}')
   return -ll.mean()
 
 
 def unconditional_loss(model, t, e, risk='1'):
 
   if model.dist == 'Weibull':
+    t += 1e-8
     return _weibull_loss(model, t, e, risk)
   elif model.dist == 'LogNormal':
+    t += 1e-8
     return _lognormal_loss(model, t, e, risk)
   elif model.dist == 'Normal':
+    t += 1e-8
     return _normal_loss(model, t, e, risk)
   else:
     raise NotImplementedError('Distribution: '+model.dist+
@@ -247,7 +262,6 @@ def _conditional_weibull_loss(model, x, t, e, elbo=True, risk='1'):
 
     k = k_[:, g]
     b = b_[:, g]
-
     s = - (torch.pow(torch.exp(b)*t, torch.exp(k)))
     f = k + b + ((torch.exp(k)-1)*(b+torch.log(t)))
     f = f + s
@@ -284,10 +298,13 @@ def _conditional_weibull_loss(model, x, t, e, elbo=True, risk='1'):
 def conditional_loss(model, x, t, e, elbo=True, risk='1'):
 
   if model.dist == 'Weibull':
+    t += 1e-8
     return _conditional_weibull_loss(model, x, t, e, elbo, risk)
   elif model.dist == 'LogNormal':
+    t += 1e-8
     return _conditional_lognormal_loss(model, x, t, e, elbo, risk)
   elif model.dist == 'Normal':
+    t += 1e-8
     return _conditional_normal_loss(model, x, t, e, elbo, risk)
   else:
     raise NotImplementedError('Distribution: '+model.dist+
