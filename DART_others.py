@@ -23,7 +23,7 @@ import warnings
 import math
 from pycox.preprocessing.feature_transforms import OrderedCategoricalLong
 from model import MixedInputMLP, Transformer, MLPVanilla
-from loss_modified import DSAFTRankLoss,DSAFTMAELoss,DSAFTRMSELoss,DSAFTNKSPLLoss, DSAFTNKSPLLossNew
+from loss_modified import DARTRankLoss,DARTMAELoss,DARTRMSELoss,DARTNKSPLLoss, DARTNKSPLLossNew
 import os
 import pickle
 
@@ -267,21 +267,21 @@ if __name__ == "__main__":
 
             patience=5
             if args.loss =='rank':
-                model.loss = DSAFTRankLoss(alpha=args.alpha, beta=args.beta)
+                model.loss = DARTRankLoss(alpha=args.alpha, beta=args.beta)
             elif args.loss == 'mae':
-                model.loss = DSAFTMAELoss()
+                model.loss = DARTMAELoss()
             elif args.loss == 'rmse':
-                model.loss = DSAFTRMSELoss()
+                model.loss = DARTRMSELoss()
             elif args.loss =='kspl':
-                model.loss = DSAFTNKSPLLoss(args.an, args.sigma)
+                model.loss = DARTNKSPLLoss(args.an, args.sigma)
             elif args.loss =='kspl_new':
-                model.loss = DSAFTNKSPLLossNew(args.an, args.sigma)
+                model.loss = DARTNKSPLLossNew(args.an, args.sigma)
 
             # Training ======================================================================
             if args.wandb:
                 model.loss.wandb = True
                 wandb.init(project='ICLR_csv_'+args.dataset, 
-                        group=f'DSAFT_fold{fold}_'+args.loss,#+args.optimizer,
+                        group=f'DART_fold{fold}_'+args.loss,#+args.optimizer,
                         name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
                         config=args)
 
@@ -315,7 +315,7 @@ if __name__ == "__main__":
                 durations_test_copy.sort()
                 time_grid = np.linspace(durations_test_copy[1], durations_test.max(), 100)
             # time_grid = np.linspace(durations_test.min(), durations_test.max(), 100)
-            # transform time grid into DSAFT scale for fair comparison
+            # transform time grid into DART scale for fair comparison
             # pdb.set_trace()
             time_grid = np.exp(scaler_train.transform(np.log(time_grid.reshape(-1, 1)))).reshape(-1)
             # grid interval for numerical integration
@@ -328,7 +328,7 @@ if __name__ == "__main__":
             
             
             import csv
-            with open('./'+'ICLR_csv_'+args.dataset+'_'+'DSAFT.csv','a',newline='') as f:
+            with open('./'+'ICLR_csv_'+args.dataset+'_'+'DART.csv','a',newline='') as f:
                 wr = csv.writer(f)
                 wr.writerow(['fold'+fold, i, val_loss, ctd, ibs, ibll, args])
 

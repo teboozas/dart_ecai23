@@ -2,8 +2,8 @@ import torch
 from torch import Tensor
 import wandb
 
-## DSAFT - rank loss function
-def dsaft_rank_loss(theta, durations, events,alpha,beta):
+## DART - rank loss function
+def dart_rank_loss(theta, durations, events,alpha,beta):
     '''
     theta: prediction output from DNN layers
     durations: log-scaled observed time (log(Y))
@@ -25,7 +25,7 @@ def dsaft_rank_loss(theta, durations, events,alpha,beta):
 
 
 
-def dsaft_mae_loss(theta, durations, events):
+def dart_mae_loss(theta, durations, events):
     '''
     theta: prediction output from DNN layers
     durations: log-scaled observed time (log(Y))
@@ -72,7 +72,7 @@ def dsaft_mae_loss(theta, durations, events):
     return loss
 
 
-def dsaft_rmse_loss(theta, durations, events):
+def dart_rmse_loss(theta, durations, events):
     '''
     theta: prediction output from DNN layers
     durations: log-scaled observed time (log(Y))
@@ -114,8 +114,8 @@ def dsaft_rmse_loss(theta, durations, events):
     return loss
 
 
-## DSAFT - negative kernel-smoothed profile likelihood loss function
-def dsaft_nkspl_loss(theta, durations, events,
+## DART - negative kernel-smoothed profile likelihood loss function
+def dart_nkspl_loss(theta, durations, events,
                      an = 1.0,
                      sigma = 1.0):
     '''
@@ -157,8 +157,8 @@ def dsaft_nkspl_loss(theta, durations, events,
     return loss
 
 
-## DSAFT - negative kernel-smoothed profile likelihood loss function
-def dsaft_nkspl_loss_new(theta, durations, events,
+## DART - negative kernel-smoothed profile likelihood loss function
+def dart_nkspl_loss_new(theta, durations, events,
                          an = 1.0,
                          sigma = 1.0):
     '''
@@ -203,44 +203,44 @@ def dsaft_nkspl_loss_new(theta, durations, events,
 
 
 ## Classes below
-class DSAFTRankLoss(torch.nn.Module):
+class DARTRankLoss(torch.nn.Module):
     def __init__(self,alpha,beta):
-        super(DSAFTRankLoss, self).__init__()
+        super(DARTRankLoss, self).__init__()
         self.alpha = alpha
         self.beta = beta
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
-        loss = dsaft_rank_loss(log_h, durations, events, alpha = self.alpha, beta = self.beta)
+        loss = dart_rank_loss(log_h, durations, events, alpha = self.alpha, beta = self.beta)
         if self.wandb: wandb.log({'loss':loss})
         return loss
 
-class DSAFTMAELoss(torch.nn.Module):
+class DARTMAELoss(torch.nn.Module):
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
-        loss = dsaft_mae_loss(log_h, durations, events)
+        loss = dart_mae_loss(log_h, durations, events)
         if self.wandb: wandb.log({'loss':loss})
         return loss
 
-class DSAFTRMSELoss(torch.nn.Module):
+class DARTRMSELoss(torch.nn.Module):
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
-        loss = dsaft_rmse_loss(log_h, durations, events)
+        loss = dart_rmse_loss(log_h, durations, events)
         if self.wandb: wandb.log({'loss':loss})
         return loss
 
-class DSAFTNKSPLLoss(torch.nn.Module):
+class DARTNKSPLLoss(torch.nn.Module):
     def __init__(self,an,sigma):
-        super(DSAFTNKSPLLoss, self).__init__()
+        super(DARTNKSPLLoss, self).__init__()
         self.an = an
         self.sigma = sigma
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
-        loss = dsaft_nkspl_loss(log_h, durations, events, an=self.an, sigma=self.sigma)
+        loss = dart_nkspl_loss(log_h, durations, events, an=self.an, sigma=self.sigma)
         if self.wandb: wandb.log({'loss':loss})
         return loss
 
-class DSAFTNKSPLLossNew(torch.nn.Module):
+class DARTNKSPLLossNew(torch.nn.Module):
     def __init__(self,an,sigma):
-        super(DSAFTNKSPLLossNew, self).__init__()
+        super(DARTNKSPLLossNew, self).__init__()
         self.an = an
         self.sigma = sigma
     def forward(self, log_h: Tensor, durations: Tensor, events: Tensor) -> Tensor:
-        loss = dsaft_nkspl_loss_new(log_h, durations, events, an=self.an, sigma=self.sigma)
+        loss = dart_nkspl_loss_new(log_h, durations, events, an=self.an, sigma=self.sigma)
         if self.wandb: wandb.log({'loss':loss})
         return loss

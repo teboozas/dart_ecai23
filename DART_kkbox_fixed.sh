@@ -2,7 +2,7 @@
 # export KAGGLE_KEY=419367c5a07c00793bc6f49e4af43bf8
 
 for i in {0..33}; do 
-python DSAFT_kkbox.py --use_BN --seed=$i --dataset=kkbox_v1 --wandb;
+python DART_kkbox.py --use_BN --seed=$i --dataset=kkbox_v1 --wandb;
 done
 
 # lr=(1e-1 1e-2 5e-3 1e-3 5e-4 1e-4)

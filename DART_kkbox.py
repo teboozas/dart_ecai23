@@ -23,7 +23,7 @@ import warnings
 import math
 from pycox.preprocessing.feature_transforms import OrderedCategoricalLong
 from model import MixedInputMLP, Transformer
-from loss_modified import DSAFTRankLoss,DSAFTMAELoss,DSAFTRMSELoss,DSAFTNKSPLLoss, DSAFTNKSPLLossNew
+from loss_modified import DARTRankLoss,DARTMAELoss,DARTRMSELoss,DARTNKSPLLoss, DARTNKSPLLossNew
 
 def get_score(n, t, y_test, delta_test, naf_base, kmf_cens, cens_test, exp_predict_neg_test, surv_residual, cens_residual, model):
     exp_residual_t = np.nan_to_num(np.exp(np.repeat(np.log(t),n) - model.predict(x_test).reshape(-1)))
@@ -257,21 +257,21 @@ if __name__ == "__main__":
 
     patience=10
     if args.loss =='rank':
-        model.loss = DSAFTRankLoss(alpha=args.alpha, beta=args.beta)
+        model.loss = DARTRankLoss(alpha=args.alpha, beta=args.beta)
     elif args.loss == 'mae':
-        model.loss = DSAFTMAELoss()
+        model.loss = DARTMAELoss()
     elif args.loss == 'rmse':
-        model.loss = DSAFTRMSELoss()
+        model.loss = DARTRMSELoss()
     elif args.loss =='kspl':
-        model.loss = DSAFTNKSPLLoss(args.an, args.sigma)
+        model.loss = DARTNKSPLLoss(args.an, args.sigma)
     elif args.loss =='kspl_new':
-        model.loss = DSAFTNKSPLLossNew(args.an, args.sigma)
+        model.loss = DARTNKSPLLossNew(args.an, args.sigma)
 
     # Training ======================================================================
     if args.wandb:
         model.loss.wandb = True
         wandb.init(project='ICLR_csv_'+args.dataset+'_baseline', 
-                group='DSAFT'+'_'+args.loss+'_'+args.optimizer,
+                group='DART'+'_'+args.loss+'_'+args.optimizer,
                 name=f'L{args.num_layers}N{args.num_nodes}D{args.dropout}W{args.weight_decay}B{args.batch_size}',
                 config=args)
 
@@ -306,7 +306,7 @@ if __name__ == "__main__":
         durations_test_copy = durations_test.copy()
         time_grid = np.linspace(durations_test_copy.sort()[1], durations_test.max(), 100)
 
-    # transform time grid into DSAFT scale for fair comparison
+    # transform time grid into DART scale for fair comparison
     time_grid = np.exp(scaler_train.transform(np.log(time_grid.reshape(-1, 1)))).reshape(-1)
     # pdb.set_trace()
     # grid interval for numerical integration
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     ibll = sum(nbll * ds) / (time_grid.max() - time_grid.min())
     
     import csv
-    with open('./'+'ICLR_csv_'+args.dataset+'_'+'DSAFT.csv','a',newline='') as f:
+    with open('./'+'ICLR_csv_'+args.dataset+'_'+'DART.csv','a',newline='') as f:
         wr = csv.writer(f)
         wr.writerow([val_loss, ctd, ibs, ibll, args])
     if args.wandb:
