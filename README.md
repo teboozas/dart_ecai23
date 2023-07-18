@@ -1,6 +1,6 @@
 # Towards Flexible Time-to-event Modeling: Optimizing Neural Networks via Rank Regression (ECAI 2023)
 
-This repository contains the implementation of the Deep AFT Rank-regression model for Time-to-event prediction (DART) of the paper **"Towards Flexible Time-to-event Modeling: Optimizing Neural Networks via Rank Regression"** by Authors: Hyunjun Lee*, Junhyun Lee*, Taehwa Choi, Jaewoo Kang and Sangbum Choi.
+This repository contains the implementation of the Deep AFT Rank-regression model for Time-to-event prediction (DART) of the paper **[Towards Flexible Time-to-event Modeling: Optimizing Neural Networks via Rank Regression](https://arxiv.org/abs/2307.08044)** by Authors: Hyunjun Lee*, Junhyun Lee*, Taehwa Choi, Jaewoo Kang and Sangbum Choi.
 (* Equal contribution)
 
 ![image](./DART.png)
