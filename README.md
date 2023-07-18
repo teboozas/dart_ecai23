@@ -5,6 +5,19 @@ This repository contains the official implementation of the Deep AFT Rank-regres
 
 ![image](./DART.png)
 
+## Abstract
+Time-to-event analysis, also known as survival analysis, aims to predict the time of occurrence of an event, given a set of features. 
+One of the major challenges in this area is dealing with censored data, which can make learning algorithms more complex. 
+Traditional methods such as Cox's proportional hazards model and the accelerated failure time (AFT) model have been popular in this field, but they often require assumptions such as proportional hazards and linearity.
+In particular, the AFT models often require pre-specified parametric distributional assumptions.
+To improve predictive performance and alleviate strict assumptions, there have been many deep learning approaches for hazard-based models in recent years.  
+However, representation learning for AFT has not been widely explored in the neural network literature, despite its simplicity and interpretability in comparison to hazard-focused methods.
+In this work, we introduce the Deep AFT Rank-regression model for Time-to-event prediction (*DART*). This model uses an objective function based on Gehan's rank statistic, which is efficient and reliable for representation learning. 
+On top of eliminating the requirement to establish a baseline event time distribution, *DART* retains the advantages of directly predicting event time in standard AFT models.
+The proposed method is a semiparametric approach to AFT modeling that does not impose any distributional assumptions on the survival time distribution. 
+This also eliminates the need for additional hyperparameters or complex model architectures, unlike existing neural network-based AFT models. 
+Through quantitative analysis on various benchmark datasets, we have shown that *DART* has significant potential for modeling high-throughput censored time-to-event data.
+
 ## Description
 The code in this repository is used to perform survival analysis using a deep learning approach. It uses a variety of libraries such as PyTorch, lifelines, pandas, and numpy to preprocess the data, build the model, and evaluate its performance.
 
